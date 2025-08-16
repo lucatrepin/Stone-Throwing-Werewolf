@@ -14,18 +14,14 @@ public enum PlayerActionsEnum {
     Rolling,
 }
 
-public partial class Player : UltraSimpleCharacter {
+public partial class Player : UltraCharacter01 {
 
     public MoveStateEnum MoveState { get; private set; } = MoveStateEnum.Walking;
     public PlayerActions Actions { get; private set; }
 
-    public Sprite2D Sprite;
     public AnimationPlayer Anim;
 
     public float Gravity { get; private set; }
-    public float VelX { get; set; } = 0f;
-    public float VelY { get; set; } = 0f;
-
 
     public Player() {
         SetCharacter(100, 75f, 1.75f, true);
@@ -40,12 +36,12 @@ public partial class Player : UltraSimpleCharacter {
     public override void _PhysicsProcess(double delta) {
         float deltaF = (float)delta;
         Vector2 Axis = Input.GetVector("Left", "Right", "Up", "Down");
-        if (Input.IsActionJustPressed("Roll") && Actions.Rolling.Avaliable && !Actions.Rolling.IsRunning) {
-            Actions.Rolling.Start();
-            GD.Print("PRESS Q");
+        if (Input.IsActionJustPressed("Roll") && Actions.Rolling.Start()) {
+            GD.Print("Rolando");
         }
         Velocity = new Vector2(VelX, 0);
         MoveAndSlide();
+        //GD.Print(VelX);
     }
 
     public void PlayAnim(string animName, float speedScale = 1f) {
@@ -58,10 +54,20 @@ public partial class Player : UltraSimpleCharacter {
 
 public partial class PlayerActions : Node {
     public PlayerActionsEnum Current { get; private set; } = PlayerActionsEnum.Idle;
-    public RollingAction Rolling { get; private set; }
+    public RollingActionPlayer Rolling { get; private set; }
 
     public PlayerActions(Player _player) {
-        Rolling = new RollingAction(_player, new SimpleEffectNumFloat(200), new SimpleEffectNumFloat(1, 50f), new SimpleEffectNumFloat(2, 100f), true);
+        Rolling = new RollingActionPlayer(_player, new SimpleEffectNumFloat(500), new SimpleEffectNumFloat(1, 50f), new SimpleEffectNumFloat(1, 50f), "Roll", true);
     }
 }
 
+
+public partial class RollingActionPlayer : RollingAction<Player> {
+    public RollingActionPlayer(BaseCharacter character, SimpleEffectNumFloat power, SimpleEffectNumFloat duration, SimpleEffectNumFloat cooldown, string animName, bool avaliable) : base(character, power, duration, cooldown, animName, avaliable) {
+
+    }
+
+    public override void PlayAnim(string animName, float speedScale) {
+        ((Player)_character).PlayAnim(animName, speedScale);
+    }
+}

@@ -14,7 +14,7 @@ namespace Datas {
         public Dictionary<string, (int, float)> EquipamentEffect { get; protected set; } = new Dictionary<string, (int, float)>();
         public Dictionary<string, (int, float)> Effects { get; protected set; } = new Dictionary<string, (int, float)>();
 
-        public SimpleEffectNum(int numInt, float numNoExponential) {
+        public SimpleEffectNum(int numInt = 1, float numNoExponential = 100f) {
             NumInt = numInt;
             NumNoExponential = numNoExponential;
         }

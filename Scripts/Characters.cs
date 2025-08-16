@@ -50,9 +50,13 @@ namespace Characters {
         Running,
     }
 
-    public partial class UltraSimpleCharacter : CharacterBody2D {
-        protected uint Level { get; private set; }
-
+    public abstract partial class BaseCharacter : CharacterBody2D {
+        public uint Level { get; protected set; } = 0;
+        public float VelX { get; set; } = 0;
+        public float VelY { get; set; } = 0;
+        public Sprite2D Sprite { get; set; }
+    }
+    public partial class UltraCharacter01 : BaseCharacter {
         protected float Weight { get; private set; }
         protected float Height { get; private set; }
 
@@ -103,39 +107,54 @@ namespace Characters {
     }
 
     public abstract partial class CharacterAction : Node {
-        public Player _player;
-        public SimpleEffectNum<float> TimeDuration { get; protected set; } = null;
-        public SimpleEffectNum<float> Cooldown { get; protected set; } = null;
-        public SimpleEffectNum<float> Power { get; protected set; } = null;
+        public BaseCharacter _character { get; protected set; }
+        public string AnimName { get; protected set; } = "Idle";
+        public SimpleEffectNumFloat TimeDuration { get; protected set; } = null;
+        public SimpleEffectNumFloat Cooldown { get; protected set; } = null;
+        public SimpleEffectNumFloat Power { get; protected set; } = null;
         public bool IsRunning { get; protected set; } = false;
-        public bool Avaliable { get; protected set; } = true;
+        public bool Avaliable { get; protected set; } = false;
+        public bool Released { get; protected set; } = false;
         public float TimeTimer { get; protected set; } = 0;
 
-        public CharacterAction(Player player, SimpleEffectNumFloat power, SimpleEffectNumFloat duration, SimpleEffectNumFloat cooldown, bool avaliable = false) {
-            _player = player;
-            _player.AddChild(this);
+        public CharacterAction(BaseCharacter character, SimpleEffectNumFloat power, SimpleEffectNumFloat duration, SimpleEffectNumFloat cooldown, string animName, bool released = false) {
+            _character = character;
+            _character.AddChild(this);
             Power = power;
             TimeDuration = duration;
             Cooldown = cooldown;
-            Avaliable = avaliable;
+            AnimName = animName;
+            if (released) {
+                Released = true;
+                Avaliable = true;
+            }
         }
 
         public override void _Ready() {
             this.SetPhysicsProcess(false);
         }
 
-        public virtual void Start() {
-            if (IsRunning) {
-            } else {
+        public virtual bool Start() {
+            if (!Released) {
+                return false;
+            } else if (IsRunning) {
+                return false;
+            } else if (Avaliable) {
                 IsRunning = true;
+                Avaliable = false;
+                PlayAnim(AnimName, 1f / TimeDuration.Value);
                 this.SetPhysicsProcess(true);
+                return true;
             }
+            return false;
         }
+
+        public abstract void PlayAnim(string animName, float speedScale);
 
         public override void _PhysicsProcess(double delta) {
             TimeTimer += (float)delta;
+            Process();
             if (TimeTimer >= TimeDuration.Value) End();
-            else Process();
         }
 
         public abstract void Process();
@@ -145,20 +164,25 @@ namespace Characters {
             TimeTimer = 0;
             this.SetPhysicsProcess(false);
             await Task.Delay((int)(Cooldown.Value * 1000));
+            Avaliable = true;
         }
+
     }
 
-    public partial class RollingAction : CharacterAction {
+    public partial class RollingAction<Parent> : CharacterAction {
         public override void _Ready() {
             base._Ready();
-            GD.Print("RollingAction ready for player: " + _player);
         }
 
         public override void Process() {
-            _player.VelX = Math.Max(0, (TimeDuration.Value - TimeTimer) * Power.Value);
+            _character.VelX = Math.Max(0, (TimeDuration.Value - TimeTimer) * Power.Value) * (_character.Sprite.FlipH ? -1 : 1);
         }
 
-        public RollingAction(Player player, SimpleEffectNumFloat power, SimpleEffectNumFloat duration, SimpleEffectNumFloat cooldown, bool avaliable) : base(player, power, duration, cooldown, avaliable) {
+        public RollingAction(BaseCharacter character, SimpleEffectNumFloat power, SimpleEffectNumFloat duration, SimpleEffectNumFloat cooldown, string animName, bool avaliable) : base(character, power, duration, cooldown, animName, avaliable) {
+
+        }
+
+        public override void PlayAnim(string animName, float speedScale = 1f) {
 
         }
     }
