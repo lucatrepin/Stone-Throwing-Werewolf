@@ -5828,7 +5828,7 @@ _data = {
 }
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jG5jK"]
-size = Vector2(40, 59)
+size = Vector2(41, 68)
 
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_IMj9R")
@@ -5840,10 +5840,10 @@ libraries = {
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture_filter = 1
-texture = ExtResource("1_p28PO")
+texture = ExtResource("1_qDP0p")
 region_enabled = true
 region_rect = Rect2(0, 0, 128, 128)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(-2, 34.5)
+position = Vector2(0.5, 30)
 shape = SubResource("RectangleShape2D_jG5jK")

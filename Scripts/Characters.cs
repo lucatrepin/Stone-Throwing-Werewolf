@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Datas;
+using System.Runtime.Intrinsics;
 
 
 namespace Characters {
@@ -50,15 +51,146 @@ namespace Characters {
         Running,
     }
 
+    public enum CharacterTypeEnum {
+        Player,
+        NPC,
+        Enemy,
+    }
+
+    /// <summary>
+    /// A base pra todo character não tem movimento, em base só nivel
+    /// </summary>
     public abstract partial class BaseCharacter : CharacterBody2D {
         public uint Level { get; protected set; } = 0;
-        public float VelX { get; set; } = 0;
-        public float VelY { get; set; } = 0;
         public Sprite2D Sprite { get; set; }
+        public AnimationPlayer Anim { get; set; }
+
+        public virtual void PlayAnim(string animName, float speedScale = 1f) {
+            if (Anim.CurrentAnimation != animName) {
+                Anim.SpeedScale = speedScale;
+                Anim.Play(animName);
+            }
+        }
+
+        public override void _Ready() {
+            Sprite = GetNode<Sprite2D>("Sprite2D");
+            Anim = GetNode<AnimationPlayer>("AnimationPlayer");
+        }
+
+        public BaseCharacter(uint level) {
+            Level = level;
+        }
     }
-    public partial class UltraCharacter01 : BaseCharacter {
+
+    /// <summary>
+    /// com movimento unico
+    /// </summary>
+    public partial class SimpleCharacter01 : BaseCharacter {
+        public float Direction { get; set; } = 1f;
+        public SimpleEffectNumFloat Speed { get; set; } = new SimpleEffectNumFloat(200);
+
+        public SimpleCharacter01(uint level, SimpleEffectNumFloat speed) : base(level) {
+            Speed = speed;
+        }
+
+        public override void _Ready() {
+            base._Ready();
+        }
+
+        public virtual void Move(double delta) {
+            float deltaF = (float)delta;
+            Velocity = new Vector2(Direction * Speed.Value * deltaF, 0);
+            MoveAndSlide();
+        }
+    }
+    
+    /// <summary>
+    /// com movimento Run / Walk
+    /// </summary>
+    public partial class SimpleCharacter02 : SimpleCharacter01 {
+        public bool Run { get; set; } = false;
+
+        public SimpleCharacter02(uint level, SimpleEffectNumFloat speed) : base(level, speed) {
+
+        }
+
+        public override void _Ready() {
+            base._Ready();
+        }
+
+        public override void Move(double delta) {
+            float deltaF = (float)delta;
+            Velocity = new Vector2(Direction * Speed.Value * (Run ? 1f : 0.5f) * deltaF, 0);
+            MoveAndSlide();
+        }
+    }
+
+    /// <summary>
+    /// com voo e movimento Run / Walk
+    /// </summary>
+    public partial class AdvancedCharacter : BaseCharacter {
+        public Vector2 Direction { get; set; } = new Vector2(1f, 0f);
+        public bool Run { get; set; } = false;
+        public bool Flying { get; set; } = false;
+        public SimpleEffectNumFloat Speed { get; set; }
+        public SimpleEffectNumFloat FlySpeed { get; set; }
+
+        public override void _Ready() {
+            base._Ready();
+            Speed = Speed ?? new SimpleEffectNumFloat(5000);
+            FlySpeed = FlySpeed ?? new SimpleEffectNumFloat(2500);
+        }
+
+        public AdvancedCharacter(uint level, SimpleEffectNumFloat speed = null, SimpleEffectNumFloat flySpeed = null) : base(level) {
+            Speed = speed ?? Speed;
+            FlySpeed = flySpeed ?? flySpeed;
+        }
+
+        public virtual void Move(double delta) {
+            float deltaF = (float)delta;
+            Velocity = new Vector2(Direction.X * Speed.Value * (Run ? 1f : 0.5f) * deltaF, Direction.Y * FlySpeed.Value * (Flying ? 1f : 0f) * deltaF);
+            MoveAndSlide();
+        }
+
+        public virtual void MoveAndFlipAndPlayAnim(double delta, string animNameWalk, string animNameRun) {
+            Move(delta);
+            Sprite.FlipH = Direction.X < 0;
+            if (Velocity.Y == 0) {
+                if (Run) PlayAnim(animNameRun);
+                else PlayAnim(animNameWalk);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Adequado para personagens com mais actions
+    /// </summary>
+    public partial class SuperCharacter : AdvancedCharacter {
+        public bool ReadyToMove { get; set; } = true;
+
+        public SuperCharacter(uint level, SimpleEffectNumFloat speed = null, SimpleEffectNumFloat flySpeed = null) : base(level, speed, flySpeed) {
+
+        }
+
+        public override void _Ready() {
+            base._Ready();
+        }
+
+        public override void Move(double delta) {
+            base.Move(delta);
+        }
+    }
+
+    /// <summary>
+    /// com movimento Run / Walk e atributos
+    /// </summary>
+    public partial class UltraCharacter : BaseCharacter {
         protected float Weight { get; private set; }
         protected float Height { get; private set; }
+
+        public UltraCharacter(uint level, SimpleEffectNumFloat speed, SimpleEffectNumFloat flySpeed) : base(level) {
+
+        }
 
         protected Dictionary<AttributesEnum, SimpleEffectNumInt> Attributes { get; private set; } = new Dictionary<AttributesEnum, SimpleEffectNumInt> {
             { AttributesEnum.Vigor, null },
@@ -91,100 +223,11 @@ namespace Characters {
             }
         }
 
-        public void PrintAll() {
-            GD.Print("LEVEL: " + Level);
-            GD.Print("WEIGHT: " + Weight);
-            GD.Print("HEIGHT: " + Height);
-            GD.Print("ATTRIBUTES:");
-            foreach (var attribute in Attributes) {
-                GD.Print($"{attribute.Key}: {attribute.Value.NumInt}");
-            }
-        }
-
-        public void Print(AttributesEnum attribute) {
-            GD.Print(attribute + ": " + Attributes[attribute].Value);
-        }
-    }
-
-    public abstract partial class CharacterAction : Node {
-        public BaseCharacter _character { get; protected set; }
-        public string AnimName { get; protected set; } = "Idle";
-        public SimpleEffectNumFloat TimeDuration { get; protected set; } = null;
-        public SimpleEffectNumFloat Cooldown { get; protected set; } = null;
-        public SimpleEffectNumFloat Power { get; protected set; } = null;
-        public bool IsRunning { get; protected set; } = false;
-        public bool Avaliable { get; protected set; } = false;
-        public bool Released { get; protected set; } = false;
-        public float TimeTimer { get; protected set; } = 0;
-
-        public CharacterAction(BaseCharacter character, SimpleEffectNumFloat power, SimpleEffectNumFloat duration, SimpleEffectNumFloat cooldown, string animName, bool released = false) {
-            _character = character;
-            _character.AddChild(this);
-            Power = power;
-            TimeDuration = duration;
-            Cooldown = cooldown;
-            AnimName = animName;
-            if (released) {
-                Released = true;
-                Avaliable = true;
-            }
-        }
-
-        public override void _Ready() {
-            this.SetPhysicsProcess(false);
-        }
-
-        public virtual bool Start() {
-            if (!Released) {
-                return false;
-            } else if (IsRunning) {
-                return false;
-            } else if (Avaliable) {
-                IsRunning = true;
-                Avaliable = false;
-                PlayAnim(AnimName, 1f / TimeDuration.Value);
-                this.SetPhysicsProcess(true);
-                return true;
-            }
-            return false;
-        }
-
-        public abstract void PlayAnim(string animName, float speedScale);
-
-        public override void _PhysicsProcess(double delta) {
-            TimeTimer += (float)delta;
-            Process();
-            if (TimeTimer >= TimeDuration.Value) End();
-        }
-
-        public abstract void Process();
-
-        public async void End() {
-            IsRunning = false;
-            TimeTimer = 0;
-            this.SetPhysicsProcess(false);
-            await Task.Delay((int)(Cooldown.Value * 1000));
-            Avaliable = true;
-        }
-
-    }
-
-    public partial class RollingAction<Parent> : CharacterAction {
-        public override void _Ready() {
-            base._Ready();
-        }
-
-        public override void Process() {
-            _character.VelX = Math.Max(0, (TimeDuration.Value - TimeTimer) * Power.Value) * (_character.Sprite.FlipH ? -1 : 1);
-        }
-
-        public RollingAction(BaseCharacter character, SimpleEffectNumFloat power, SimpleEffectNumFloat duration, SimpleEffectNumFloat cooldown, string animName, bool avaliable) : base(character, power, duration, cooldown, animName, avaliable) {
-
-        }
-
-        public override void PlayAnim(string animName, float speedScale = 1f) {
+        public void Move(double delta) {
 
         }
     }
+
+    
 
 }
