@@ -1,10 +1,8 @@
 using Godot;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Datas;
-using System.Runtime.Intrinsics;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 
 namespace Characters {
@@ -51,12 +49,7 @@ namespace Characters {
         Running,
     }
 
-    public enum CharacterTypeEnum {
-        Player,
-        NPC,
-        Enemy,
-    }
-
+    
     /// <summary>
     /// A base pra todo character não tem movimento, em base só nivel
     /// </summary>
@@ -83,103 +76,57 @@ namespace Characters {
     }
 
     /// <summary>
-    /// com movimento unico
+    /// com movimento simples, só anda pra frente e pra trás
     /// </summary>
-    public partial class SimpleCharacter01 : BaseCharacter {
+    public partial class SimpleCharacter : BaseCharacter {
+        public SimpleEffectNumFloat Speed { get; private set; } = new SimpleEffectNumFloat(5000);
         public float Direction { get; set; } = 1f;
-        public SimpleEffectNumFloat Speed { get; set; } = new SimpleEffectNumFloat(200);
 
-        public SimpleCharacter01(uint level, SimpleEffectNumFloat speed) : base(level) {
-            Speed = speed;
+        public SimpleCharacter(uint level, SimpleEffectNumFloat speed = null) : base(level) {
+            Speed = speed ?? speed;
         }
 
-        public override void _Ready() {
-            base._Ready();
-        }
-
-        public virtual void Move(double delta) {
-            float deltaF = (float)delta;
-            Velocity = new Vector2(Direction * Speed.Value * deltaF, 0);
-            MoveAndSlide();
-        }
-    }
-    
-    /// <summary>
-    /// com movimento Run / Walk
-    /// </summary>
-    public partial class SimpleCharacter02 : SimpleCharacter01 {
-        public bool Run { get; set; } = false;
-
-        public SimpleCharacter02(uint level, SimpleEffectNumFloat speed) : base(level, speed) {
-
-        }
-
-        public override void _Ready() {
-            base._Ready();
-        }
-
-        public override void Move(double delta) {
-            float deltaF = (float)delta;
-            Velocity = new Vector2(Direction * Speed.Value * (Run ? 1f : 0.5f) * deltaF, 0);
+        public virtual void Move(float deltaF) {
+            Velocity = new Vector2(Speed.Value * Direction * deltaF, 0);
             MoveAndSlide();
         }
     }
 
     /// <summary>
-    /// com voo e movimento Run / Walk
+    /// com movimento Run / Walk, mas sem atributos
     /// </summary>
-    public partial class AdvancedCharacter : BaseCharacter {
-        public Vector2 Direction { get; set; } = new Vector2(1f, 0f);
+    public partial class AdvancedCharacter : SimpleCharacter {
         public bool Run { get; set; } = false;
-        public bool Flying { get; set; } = false;
-        public SimpleEffectNumFloat Speed { get; set; }
-        public SimpleEffectNumFloat FlySpeed { get; set; }
 
-        public override void _Ready() {
-            base._Ready();
-            Speed = Speed ?? new SimpleEffectNumFloat(5000);
-            FlySpeed = FlySpeed ?? new SimpleEffectNumFloat(2500);
+        public AdvancedCharacter(uint level, SimpleEffectNumFloat speed = null) : base(level, speed) {
+
         }
 
-        public AdvancedCharacter(uint level, SimpleEffectNumFloat speed = null, SimpleEffectNumFloat flySpeed = null) : base(level) {
-            Speed = speed ?? Speed;
+        public override void Move(float deltaF) {
+            Velocity = new Vector2((Run ? 1f : 0.5f) * Speed.Value * Direction * deltaF, 0);
+            MoveAndSlide();
+        }
+    }
+
+    /// <summary>
+    /// com movimento, Fly
+    public partial class SuperCharacter : BaseCharacter {
+        public SimpleEffectNumFloat Speed { get; private set; } = new SimpleEffectNumFloat(5000);
+        public SimpleEffectNumFloat FlySpeed { get; private set; } = new SimpleEffectNumFloat();
+        public Vector2 Direction { get; set; }
+        public bool Fly { get; set; } = false;
+        public bool Run { get; set; } = false;
+
+        public SuperCharacter(uint level, SimpleEffectNumFloat speed = null, SimpleEffectNumFloat flySpeed = null) : base(level) {
             FlySpeed = flySpeed ?? flySpeed;
         }
 
-        public virtual void Move(double delta) {
-            float deltaF = (float)delta;
-            Velocity = new Vector2(Direction.X * Speed.Value * (Run ? 1f : 0.5f) * deltaF, Direction.Y * FlySpeed.Value * (Flying ? 1f : 0f) * deltaF);
+        public virtual void Move(float deltaF) {
+            Velocity = new Vector2((Run ? 1f : 0.5f) * Speed.Value * Direction.X * deltaF, Fly ? FlySpeed.Value * Direction.Y * deltaF : 0);
             MoveAndSlide();
         }
-
-        public virtual void MoveAndFlipAndPlayAnim(double delta, string animNameWalk, string animNameRun) {
-            Move(delta);
-            Sprite.FlipH = Direction.X < 0;
-            if (Velocity.Y == 0) {
-                if (Run) PlayAnim(animNameRun);
-                else PlayAnim(animNameWalk);
-            }
-        }
     }
-    
-    /// <summary>
-    /// Adequado para personagens com mais actions
-    /// </summary>
-    public partial class SuperCharacter : AdvancedCharacter {
-        public bool ReadyToMove { get; set; } = true;
 
-        public SuperCharacter(uint level, SimpleEffectNumFloat speed = null, SimpleEffectNumFloat flySpeed = null) : base(level, speed, flySpeed) {
-
-        }
-
-        public override void _Ready() {
-            base._Ready();
-        }
-
-        public override void Move(double delta) {
-            base.Move(delta);
-        }
-    }
 
     /// <summary>
     /// com movimento Run / Walk e atributos

@@ -27,12 +27,13 @@ public partial class Player : SuperCharacter {
     }
 
     public override void _PhysicsProcess(double delta) {
+        float deltaF = (float)delta;
         Direction = Input.GetVector("Left", "Right", "Up", "Down");
         if (Input.IsActionJustPressed("Roll")) {
 
         } else if (ReadyToMove) {
             if (Direction.X != 0 || Direction.Y != 0) {
-                MoveAndFlipAndPlayAnim(delta, "Walking", "Running");
+                Move(deltaF);
             } else {
                 PlayAnim("Idle");
             }
