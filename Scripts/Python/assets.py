@@ -4,19 +4,28 @@ from PIL import Image;
 from enum import Enum;
 import math;
 import json;
+import cv2;
+import time;
+
+PRINT = True
 
 pathPy = os.path.abspath(__file__).replace("\\", "/")
 pathSrc = pathPy.replace("Scripts/Python/assets.py", "Assets/src/")
 pathDist = pathPy.replace("Scripts/Python/assets.py", "Assets/dist/")
-pathSrcSprites = os.path.join(pathSrc, "Sprites")
-pathDistSprites = os.path.join(pathDist, "Sprites")
-print("pathPy", pathPy)
-print("pathSrc", pathSrc)
-print("pathDist", pathDist)
-print("pathSrcSprites", pathSrcSprites)
-print("pathDistSprites", pathDistSprites)
+pathSrcSprites = os.path.join(pathSrc, "Sprites/")
+pathDistSprites = os.path.join(pathDist, "Sprites/")
+pathScenes = pathPy.replace("Scripts/Python/assets.py", "Scenes/")
+pathCharacters = pathScenes + "Characters/"
+pathProjectiles = pathScenes + "Projectiles/"
 
-PRINT = False
+if (PRINT):
+  print("pathPy", pathPy)
+  print("pathSrc", pathSrc)
+  print("pathDist", pathDist)
+  print("pathSrcSprites", pathSrcSprites)
+  print("pathDistSprites", pathDistSprites)
+  print("pathScenes", pathScenes)
+  print("pathCharacters", pathCharacters)
 
 class ExtractModeEnum(Enum):
     CRAFTPIX_NORMAL = 1
@@ -59,7 +68,7 @@ def CreateAtlasWithFolderOfAssets(pathOrigin, pathDestiny): # Use Gangsters_1 fo
           else:
             imgPath = os.path.join(root, file)
             if imgPath.endswith(".import"): continue
-            img = Image.open(imgPath)
+            img = cv2.imread(imgPath, cv2.IMREAD_UNCHANGED)
             width, height = img.size
             animations = width / height
             if animations != int(animations):
@@ -85,76 +94,55 @@ def CreateAtlasWithFolderOfAssets(pathOrigin, pathDestiny): # Use Gangsters_1 fo
         for file, animations, img in atlas:
           if (PRINT): print("CreateAtlasWithFolderOfAssets: Create Atlas", file, animations, "Size:", (X, Y), "Each:", numAtlas)
           for i in range(animations):
-            imgCrop = img.crop((i * numAtlas, 0, (i + 1) * numAtlas, numAtlas))
+            imgCrop = img[0:numAtlas, i * numAtlas:(i + 1) * numAtlas]
             atlasImage.paste(imgCrop, (x * numAtlas, y * numAtlas))
             x += 1
             if x == X:
               x = 0
               y += 1
-                          
-        atlasImage.save(os.path.join(pathDestiny, f"atlas_{numAtlas}.png"))
-                
-        def CreateJson(): # dar um jeito de fazer isso melhor / checar se funciona corretamente com o ts
-            x = 0
-            y = 0
-            jsonData = {"atlas": {}, "data": {"numAtlas": numAtlas, "size": {"X": X, "Y": Y}}}
-            for file, animations, img in atlas:
-              jsonData["atlas"][os.path.splitext(file)[0]] = {}
-              timeBase = 1000
-              jsonData["atlas"][os.path.splitext(file)[0]]["time"] = timeBase
-              for i in range(animations):
-                jsonData["atlas"][os.path.splitext(file)[0]][i] = {
-                    "x": x * numAtlas,
-                    "y": y * numAtlas,
-                    "w": x * numAtlas + numAtlas,
-                    "h": y * numAtlas + numAtlas,
-                }
-                x += 1
-                if x == X:
-                  x = 0
-                  y += 1
 
-            with open(os.path.join(pathDestiny, f"atlas_{numAtlas}.json"), "w") as jsonFile:
-              json.dump(jsonData, jsonFile, indent=3)
+        cv2.imwrite(os.path.join(pathDestiny, f"atlas_{numAtlas}.png"), atlasImage)
 
-        CreateJson()
-        
-
+    CreateAtlas()
+    
     if (PRINT): print("AtlasDict", atlasDict)
     
+    return atlasDict
     
   SetAtlas(pathOrigin, pathDestiny)
 
 
-def extractAssetsCraftpixNormal(pathOrigin, pathDestiny): # Use briga de rua_gangster for create multiple atlas
-  if VerifyIgnore(pathOrigin): v # logica Ignore
-
-  execptionsFolders = ["PSD", "__MACOSX"]
-  for item in os.listdir(pathOrigin): #  Use briga de rua_gangster For Gangsters_1
-    if os.path.isdir(os.path.join(pathOrigin, item)):
-      if item not in execptionsFolders:
-        CreateAtlasWithFolderOfAssets(os.path.join(pathOrigin, item), os.path.join(pathDestiny, item))
-
-def extractAssets(pathOrigin, pathDestiny, mode: ExtractModeEnum):
-  if VerifyIgnore(pathOrigin): return # logica Ignore
-
-  if os.path.exists(pathDestiny) == False:
-    os.makedirs(pathDestiny)
-    
-  if mode == ExtractModeEnum.CRAFTPIX_NORMAL:
-    extractAssetsCraftpixNormal(pathOrigin, pathDestiny)
-
-def extractMultAssets(pathOrigin, pathDestiny, mode: ExtractModeEnum):
-  if VerifyIgnore(pathOrigin): return # logica Ignore
-
-  for item in os.listdir(pathOrigin):
-    if os.path.isdir(os.path.join(pathOrigin, item)):
-      extractAssets(os.path.join(pathOrigin, item), os.path.join(pathDestiny, item), mode)
+def CreateAnim(pathScene, atlasDict):
+  for numAtlas in atlasDict:
+    atlas = atlasDict[numAtlas]
+    for file, animations, img in atlas:
+      x = 0
+      y = 0
+      for i in range(animations):
+        pass
 
 
-
-extractMultAssets(pathSrcSprites, pathDistSprites, ExtractModeEnum.CRAFTPIX_NORMAL)
-
+# CreateAtlasWithFolderOfAssets(os.path.join(pathSrcSprites, "briga de rua_gangster/Gangsters_1"), os.path.join(pathDistSprites, "briga de rua_gangster/Gangsters_1"))
 
 
-# def VerifyIgnore(path): # terminar de implementar / usar no codigo
+def SetScenes():
+  for folder in os.listdir(pathCharacters): 
+    folderPath = os.path.join(pathCharacters, folder) # Gangsters_1 dentro de Characters
+    if os.path.isdir(folderPath):
+      pathDest = os.path.join(pathScenes, "Characters", folder, )
+      if os.path.exists(destPath) == False:
+        os.makedirs(destPath)
+      CreateAnim(pathDest, CreateAtlasWithFolderOfAssets(folderPath, destPath))
+
+  for folder in os.listdir(pathProjectiles):
+    folderPath = os.path.join(pathProjectiles, folder)
+    if os.path.isdir(folderPath):
+      destPath = os.path.join(pathScenes, "Projectiles", folder)
+      if os.path.exists(destPath) == False:
+        os.makedirs(destPath)
+      for file in os.listdir(folderPath):
+        if file.endswith(".png"):
+          shutil.copy(os.path.join(folderPath, file), os.path.join(destPath, file))
+          if (PRINT): print("SetScenes: Copy", os.path.join(folderPath, file), "to", os.path.join(destPath, file))
+
+SetScenes()
